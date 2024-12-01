@@ -27,17 +27,27 @@ class JokesPage extends StatefulWidget {
 class _JokesPageState extends State<JokesPage> {
   final JokeService _jokeService = JokeService();
   List<Map<String, dynamic>> _jokes = [];
+  Set<Map<String, dynamic>> _favoriteJokes = {}; // Set to track favorite jokes
   bool _isLoading = false;
+  bool _hasMoreJokes = true;
+  int _currentPage = 1;
+  static const int _jokesPerPage = 5;
 
   Future<void> _fetchJokes() async {
+    if (_isLoading) return; // Prevent multiple fetches
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final jokes = await _jokeService.fetchJokes();
+      final jokes = await _jokeService.fetchJokes(page: _currentPage, limit: _jokesPerPage);
       setState(() {
-        _jokes = jokes;
+        _jokes.addAll(jokes);
+        _currentPage++; // Increment the page number for next fetch
+        if (jokes.length < _jokesPerPage) {
+          _hasMoreJokes = false; // No more jokes to load
+        }
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -48,6 +58,23 @@ class _JokesPageState extends State<JokesPage> {
         _isLoading = false;
       });
     }
+  }
+
+  // Toggle favorite status
+  void _toggleFavorite(Map<String, dynamic> joke) {
+    setState(() {
+      if (_favoriteJokes.contains(joke)) {
+        _favoriteJokes.remove(joke); // Remove from favorites
+      } else {
+        _favoriteJokes.add(joke); // Add to favorites
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchJokes(); // Fetch jokes when the app starts
   }
 
   @override
@@ -97,7 +124,6 @@ class _JokesPageState extends State<JokesPage> {
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
                 height: 2, // Adds 20px space
-
               ),
             ),
             const SizedBox(height: 8),
@@ -110,11 +136,11 @@ class _JokesPageState extends State<JokesPage> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _isLoading ? null : _fetchJokes,
+              onPressed: _isLoading || !_hasMoreJokes ? null : _fetchJokes,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 56,
+                  horizontal: 32,
                   vertical: 12,
                 ),
               ),
@@ -145,19 +171,46 @@ class _JokesPageState extends State<JokesPage> {
                 ),
               )
                   : ListView.builder(
-                itemCount: _jokes.length,
+                itemCount: _jokes.length + (_hasMoreJokes ? 1 : 0), // Add an extra item for the "Load More" button
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemBuilder: (context, index) {
+                  if (index == _jokes.length) {
+                    // Show "Load More" button at the end of the list
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: ElevatedButton(
+                        onPressed: _fetchJokes,
+                        style: ElevatedButton.styleFrom(
+                          primary: Colors.deepPurpleAccent,
+                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                          color: Colors.white,
+                        )
+                            : const Text('Load More'),
+                      ),
+                    );
+                  }
                   final joke = _jokes[index];
+                  final isFavorite = _favoriteJokes.contains(joke);
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(12),
+                      title: Text(
                         joke['type'] == 'single'
                             ? joke['joke']
                             : '${joke['setup']}\n\n${joke['delivery']}',
                         style: const TextStyle(fontSize: 16),
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(
+                          isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: isFavorite ? Colors.red : Colors.grey,
+                        ),
+                        onPressed: () => _toggleFavorite(joke),
                       ),
                     ),
                   );
