@@ -43,6 +43,15 @@ android {
         main.java.srcDirs += 'src/main/kotlin'
     }
 
+//    android {
+//        defaultConfig {
+//            applicationId "com.example.jokes_app"
+//            minSdkVersion 19 // Update this to 19 or higher
+//            targetSdkVersion 33
+//            versionCode 1
+//            versionName "1.0"
+//        }
+//    }
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId "com.example.jokes_app"
@@ -53,6 +62,7 @@ android {
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
+
 
     buildTypes {
         release {
